@@ -1,14 +1,20 @@
 from django.shortcuts import render,redirect,get_object_or_404
 import razorpay
 from django.http import HttpResponse
+from requests import Response
 # Create your views here.
 from .models import *
 from django.db.models import Q
 from django.conf import settings
+from django.views.decorators.csrf import csrf_exempt
+
 from django.contrib import *
 from django.contrib.auth import *
 from django.contrib.auth.decorators import *
-
+import json
+from django.http import JsonResponse
+from django.db.models import F, IntegerField
+from django.db.models.functions import Cast
 
 
 # from.forms import*
@@ -16,6 +22,89 @@ from django.contrib.auth.decorators import *
 
 def test(request):
     return render(request,'mainindex.html')
+
+
+#ajax call
+
+
+# views.py (continued)
+# ...
+
+def pgfilter(request):
+    if request.method == 'POST':
+        # Get the JSON data from the request body
+        filter_data = json.loads(request.body)
+       # print("Received data:", filter_data)
+
+        # Extract individual filter values
+        gents_filter = filter_data.get('gentsFilter', False)
+        ladies_filter = filter_data.get('ladiesFilter', False)
+        unisex_filter = filter_data.get('unisexFilter', False)
+        housekeeping_filter = filter_data.get('housekeepingFilter', False)
+        ac_filter = filter_data.get('acFilter', False)
+        balcony_filter = filter_data.get('balconyFilter', False)
+        kitchen_filter = filter_data.get('kitchenFilter', False)
+        mineral_water_filter = filter_data.get('mineralWaterFilter', False)
+        rent_under_5000 = filter_data.get('rentUnder5000', False)
+        rent_5000_to_7000 = filter_data.get('rent5000to7000', False)
+        rent_7000_to_10000 = filter_data.get('rent7000to10000', False)
+        rent_over_10000 = filter_data.get('rentOver10000', False)
+
+        # Start with an empty queryset
+        filtered_pgs = PG.objects.all()
+        #print(rent_5000_to_7000)
+
+        # Apply filters based on conditions
+        if gents_filter:
+            filtered_pgs = filtered_pgs.filter(gender='male')
+
+        if ladies_filter:
+            filtered_pgs = filtered_pgs.filter(gender='female')
+
+        if unisex_filter:
+            filtered_pgs = filtered_pgs.filter(gender='unisex')
+
+        if housekeeping_filter:
+            filtered_pgs = filtered_pgs.filter(amenities__icontains='House Keeping')
+
+        if ac_filter:
+            filtered_pgs = filtered_pgs.filter(amenities__icontains='ac')
+
+        if balcony_filter:
+            filtered_pgs = filtered_pgs.filter(amenities__icontains='Balcony')
+
+        if kitchen_filter:
+            filtered_pgs = filtered_pgs.filter(amenities__icontains='Kitchen')
+
+        if mineral_water_filter:
+            filtered_pgs = filtered_pgs.filter(amenities__icontains='Mineral Water')
+
+        if rent_under_5000:
+    # Cast 'rent' to IntegerField and filter
+            filtered_pgs = filtered_pgs.annotate(rent_as_int=Cast('rent', IntegerField())).filter(rent_as_int__lt=5000)
+
+        if rent_5000_to_7000:
+    # Cast 'rent' to IntegerField and filter
+            filtered_pgs = filtered_pgs.annotate(rent_as_int=Cast('rent', IntegerField())).filter(rent_as_int__range=(5000, 7000))
+
+        if rent_7000_to_10000:
+    # Cast 'rent' to IntegerField and filter
+             filtered_pgs = filtered_pgs.annotate(rent_as_int=Cast('rent', IntegerField())).filter(rent_as_int__range=(7000, 10000))
+
+        if rent_over_10000:
+    # Cast 'rent' to IntegerField and filter
+              filtered_pgs = filtered_pgs.annotate(rent_as_int=Cast('rent', IntegerField())).filter(rent_as_int__gt=10000)
+        # Serialize the filtered data
+        serialized_pgs = [PGSerializer(pg).data for pg in filtered_pgs]
+
+        # Send the serialized data as a JSON response
+        return JsonResponse(serialized_pgs, safe=False)
+
+    # Handle other cases as needed
+    return JsonResponse([], safe=False)
+
+  
+
 
 def home(request):
     return render(request,'index.html')

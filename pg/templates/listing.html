@@ -6,7 +6,7 @@
   .hero-header {
     background-image: url('{% static "bg-hero.jpg" %}');
     color: blue;
-}
+  }
  {% comment %} *{
     margin:0;
     pading:0;
@@ -16,16 +16,18 @@
  } {% endcomment %}
  .container{
   padding:0 7%;
-} 
+  width: 100%;
+  padding: 0 2%;
+ } 
 
-.list-container{
+ .list-container{
   margin-top:50px;
   display:flex;
   flex-wrap: wrap;
   justify-content: space-between;
 
 
-} 
+ } 
  .left-col{
   flex-basis: 70%;
 }
@@ -186,24 +188,20 @@
 
 }
 /* smaller screen for listing page */
- @media only screen and (max-width: 700px){
-  .list-container{
-      margin-top: 150px;
+@media only screen and (max-width: 700px) {
+  .list-container {
+    margin-top: 50px;
+    flex-direction: column;
+  }
 
+  .left-col,
+  .right-col,
+  .house-img,
+  .house-info {
+    flex-basis: 100%;
   }
-  .left-col, .right-col, .house-img, .house-info{
-      flex-basis: 100%;
+}
 
-  }
-  .left-col h1{
-      font-size: 22px;
-  }
-  .house-info h3{
-      font-size: 18px;
-
-  }
-  
-} 
 /* Change the color of the person icon and guest text inside the <p> tag */
 .guest-info p {
     color: #ff0000; /* Replace with your desired color */
@@ -277,6 +275,8 @@
   .carousel-control-next-icon {
     background-color: black; 
   }
+{% comment %} responsive {% endcomment %}
+
 
 </style>
     
@@ -294,60 +294,132 @@
       new bootstrap.Carousel(carousel);
   });
 
-  {% comment %} fillter used {% endcomment %}
-  document.addEventListener('DOMContentLoaded', function () {
-    document.getElementById('applyFilters').addEventListener('click', function () {
-        // Get filter values
-        const gentsFilter = document.getElementById('gentsFilter').checked;
-        const ladiesFilter = document.getElementById('ladiesFilter').checked;
-        const unisexFilter = document.getElementById('unisexFilter').checked;
-        const housekeepingFilter = document.getElementById('housekeepingFilter').checked;
-        const acFilter = document.getElementById('acFilter').checked;
-        const balconyFilter = document.getElementById('balconyFilter').checked;
-        const kitchenFilter = document.getElementById('kitchenFilter').checked;
-        const mineralWaterFilter = document.getElementById('mineralWaterFilter').checked;
- 
-        // Loop through each listing
-        const listings = document.querySelectorAll('.house');
-        listings.forEach(function (listing) {
-            const gender = listing.getAttribute('data-gender');
-            const rent = parseFloat(listing.getAttribute('data-rent'));
-            const amenities = listing.getAttribute('data-amenities');
- 
-            // Check filters and hide/show listings accordingly
-            if (
-                (gentsFilter && gender === 'Gents') ||
-                (ladiesFilter && gender === 'Ladies') ||
-                (unisexFilter && gender === 'Unisex')
-            ) {
-                if (
-                    (rentUnder5000 && rent < 5000) ||
-                    (rent5000to7000 && rent >= 5000 && rent <= 7000) ||
-                    (rent7000to10000 && rent > 7000 && rent <= 10000) ||
-                    (rentOver10000 && rent > 10000)
-                ) {
-                    if (
-                        (housekeepingFilter && amenities.includes('Housekeeping')) ||
-                        (acFilter && amenities.includes('AC')) ||
-                        (balconyFilter && amenities.includes('Balcony')) ||
-                        (kitchenFilter && amenities.includes('Kitchen')) ||
-                        (mineralWaterFilter && amenities.includes('Mineral Water'))
-                    ) {
-                        listing.style.display = 'block'; // Show the listing
+  
+  /*Ajax Implementation*/
+    document.addEventListener('DOMContentLoaded', function () {
+        document.getElementById('applyFilters').addEventListener('click', function () {
+            // Get filter values
+            const gentsFilter = document.getElementById('gentsFilter').checked ? 'male' : null;
+            const ladiesFilter = document.getElementById('ladiesFilter').checked ? 'female' : null;
+            const unisexFilter = document.getElementById('unisexFilter').checked ? 'unisex' : null;
+            const housekeepingFilter = document.getElementById('housekeepingFilter').checked ? 'House Keeping' : null;
+            const acFilter = document.getElementById('acFilter').checked ? 'AC' : null;
+            const balconyFilter = document.getElementById('balconyFilter').checked ? 'Balcony' : null;
+            const kitchenFilter = document.getElementById('kitchenFilter').checked ? 'Kitchen' : null;
+            const mineralWaterFilter = document.getElementById('mineralWaterFilter').checked ? 'Mineral Water' : null;
+            const rentUnder5000 = document.getElementById('rentUnder5000').checked ? { min: 0, max: 5000 } : null;
+            const rent5000to7000 = document.getElementById('rent5000to7000').checked ? { min: 5000, max: 7000 } : null;
+            const rent7000to10000 = document.getElementById('rent7000to10000').checked ? { min: 7000, max: 10000 } : null;
+            const rentOver10000 = document.getElementById('rentOver10000').checked ? { min: 10000, max: Infinity } : null;
+            const filterData = {
+                gentsFilter,
+                ladiesFilter,
+                unisexFilter,
+                housekeepingFilter,
+                acFilter,
+                balconyFilter,
+                kitchenFilter,
+                mineralWaterFilter,
+                rentUnder5000,
+                rent5000to7000,
+                rent7000to10000,
+                rentOver10000,
+            };
+    
+            // Create XMLHttpRequest object
+            const xhttp = new XMLHttpRequest();
+            const url = '/pgfilter'; // Configure it as a POST request to /pgfilter
+            xhttp.open("POST", url, true);
+    
+            // Get the CSRF token from the cookie
+            const csrftoken = getCookie('csrftoken');
+            xhttp.setRequestHeader('X-CSRFToken', csrftoken);
+            xhttp.setRequestHeader('Content-Type', 'application/json');
+    
+            xhttp.onreadystatechange = function () {
+                if (xhttp.readyState == 4 && xhttp.status == 200) {
+                    const responseData = JSON.parse(xhttp.responseText);
+                    const pgListingsContainer = document.getElementById('pgListings'); // Assuming you have a container div with the id 'pgListings'
+    
+                    // Intermediate variable to store HTML content
+                    let pgListingsHTML = '';
+    
+                    if (responseData.length > 0) {
+                        responseData.forEach(pg => {
+                            const pgHtml = `
+                            <div class="house">
+                              <div class="house-img">
+                                  <div id="carouselExampleControls${pg.id}" class="carousel slide" data-bs-ride="carousel">
+                                      <div class="carousel-inner" data-bs-interval="200">
+                                          <div class="carousel-item active">
+                                              <img src="${pg.property_image1}" class="d-block w-100" alt="...">
+                                          </div>
+                                          <div class="carousel-item">
+                                              <img src="${pg.property_image2}" class="d-block w-100" alt="...">
+                                          </div>
+                                          <div class="carousel-item">
+                                              <img src="${pg.property_image3}" class="d-block w-100" alt="...">
+                                          </div>
+                                      </div>
+                                      <button class="carousel-control-prev" type="button" data-bs-target="#carouselExampleControls${pg.id}" data-bs-slide="prev">
+                                          <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                                          <span class="visually-hidden">Previous</span>
+                                      </button>
+                                      <button class="carousel-control-next" type="button" data-bs-target="#carouselExampleControls${pg.id}" data-bs-slide="next">
+                                          <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                                          <span class="visually-hidden">Next</span>
+                                      </button>
+                                  </div>
+                              </div>
+                              
+                              <div class="house-info">
+                                  <p style="color: darkgoldenrod;">Private pg ${pg.id}</p>
+                                  <h3 style="color: #0056b3;">${pg.pgname}</h3>
+                                  <p style="color: #007bff; padding: 0%; margin: 0%;">Location: <span style="color: blueviolet; padding: 0%;margin: 0%;">${pg.city},${pg.state},${pg.location}</span></p>
+                                  <p style="color: #007bff; padding: 0%; margin: 0%;">Amenities: <span style="color: blueviolet; padding: 0%;margin: 0%;">${pg.amenities}</span></p>
+                                  <div class="guest-info">
+                                      <p><i class="fas fa-user"></i> ${pg.no_of_beds} Guest</
+                                      </p>
+                                    </div>
+                                    <div class="price-info">
+                                        <div class="price-button">
+                                            <a href="show_pg/${pg.id}" class="btn btn-primary">View PG Details</a>
+                                            <h4>Rs.${pg.rent} <span>/month</span></h4>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            `;
+    
+                            // Append the HTML content to the pgListingsHTML variable
+                            pgListingsHTML += pgHtml;
+                        });
+    
+                        // Set the HTML content of the pgListingsContainer
+                        pgListingsContainer.innerHTML = pgListingsHTML;
                     } else {
-                        listing.style.display = 'none'; // Hide the listing
+                        // Handle the case where no results are found
+                        pgListingsContainer.innerHTML = '<h4 style="color: #777;">No results found.</h4>';
                     }
-                } else {
-                    listing.style.display = 'none'; // Hide the listing
                 }
-            } else {
-                listing.style.display = 'none'; // Hide the listing
-            }
+            };
+    
+            // Convert filterData to JSON and send it in the request body
+            xhttp.send(JSON.stringify(filterData));
         });
+    
+        // Helper function to get the value of a cookie by name
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+        }
     });
- });
- 
-  </script>
+    
+          
+     
+
+
   
 {% endblock script %}
 {% block div %}
@@ -381,11 +453,10 @@
             </div>
           </div>
             <h1>Recommended Place In India</h1>
-            {% comment %} room listing {% endcomment %}
-      {% if pg_listings %}
+      <div id="pgListings">  
+        {% if pg_listings %}
         {% for pg in pg_listings %}
-        {% comment %} {% for book in booking%}
-        {% if {{pg.id}} != {{book.pgid}} %} {% endcomment %}
+        
             <div class="house">
                 <div class="house-img">
                     <div id="carouselExampleControls{{pg.id}}" class="carousel slide" data-bs-ride="carousel">
@@ -440,14 +511,15 @@
 
             {% comment %} room listing {% endcomment %}
             
-                
+          </div>        
         </div>
+        {% comment %} <div id="pgListings"></div> {% endcomment %}
         <div class="right-col">
             <div class="sidebar">
                 <h3>Select Filters</h3>
                 <h5 style="font-weight: 500; margin: 15px 0 10px;">Gender</h5>
                 <div class="filter">
-                  <label><input type="checkbox" id="gentsFilter"> Gents</label>
+                  <label><input type="checkbox"  id="gentsFilter"> Gents</label>
                 </div>
                 <div class="filter">
                    <label><input type="checkbox" id="ladiesFilter"> Ladies</label>
@@ -459,17 +531,18 @@
               <!-- Monthly Rent Filters -->
                 <h5 style="font-weight: 500; margin: 15px 0 10px;">Monthly Rent</h5>
                 <div class="filter-checkbox">
-                  <label><input type="checkbox" id="rentUnder5000"> < 5000</label>
-                </div>
-                <div class="filter-checkbox">
-                  <label><input type="checkbox" id="rent5000to7000"> 5000 - 7000</label>
-                </div>
-                <div class="filter-checkbox">
-                  <label><input type="checkbox" id="rent7000to10000"> 7000 - 10000</label>
-                </div>
-                <div class="filter-checkbox">
-                  <label><input type="checkbox" id="rentOver10000"> > 10000</label>
-                </div>
+                  <label><input type="checkbox" id="rentUnder5000" data-min="0" data-max="5000"> < 5000</label>
+              </div>
+              <div class="filter-checkbox">
+                  <label><input type="checkbox" id="rent5000to7000" data-min="5000" data-max="7000"> 5000 - 7000</label>
+              </div>
+              <div class="filter-checkbox">
+                  <label><input type="checkbox" id="rent7000to10000" data-min="7000" data-max="10000"> 7000 - 10000</label>
+              </div>
+              <div class="filter-checkbox">
+                  <label><input type="checkbox" id="rentOver10000" data-min="10000" data-max="Infinity"> > 10000</label>
+              </div>
+              
 
                 {% comment %} <div class="sidebar-link">
                     <a href="#">View More</a>

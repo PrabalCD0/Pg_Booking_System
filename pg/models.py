@@ -7,6 +7,7 @@ from django.utils.crypto import*
 from django.db import models
 
 class PG(models.Model):
+    
     pgname = models.CharField(max_length=100)
     gender = models.CharField(max_length=100, choices=[
         ('male', 'Male'),
@@ -33,6 +34,14 @@ class PG(models.Model):
         return self.pgname
     class Meta:
         db_table="PG"
+#serializer for pg
+from rest_framework import serializers
+
+class PGSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PG
+        fields = '__all__'
+
 
 class PGLister(models.Model):
     GENDER_CHOICES = [

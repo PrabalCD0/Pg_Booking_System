@@ -7,6 +7,9 @@ from django.conf.urls.static import static
 urlpatterns=[
      path('',views.test),
      path('home',views.home,name='home'),
+
+     #ajax cal
+     path('pgfilter',views.pgfilter),
      path('about',views.about),
      path('contact',views.contact),
      path('service',views.service),
